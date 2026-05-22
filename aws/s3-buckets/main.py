@@ -83,6 +83,19 @@ def get_bucket_policy(s3_client, bucket_name: str):
     print(f"Bucket policy retrieved successfully for bucket '{bucket_name}'.")
     return policy
 
+# This function uploads a file to an S3 bucket with specified metadata and optional tags.
+# Metadata is additional information about the file that can be stored as key-value pairs, 
+# while tags are used to categorize and manage S3 objects. The function uses the put_object 
+# method to upload the file along with its metadata, and if tagging information is provided, 
+# it uses the put_object_tagging method to add tags to the uploaded object.
+def file_upload_with_metadata(s3_client, bucket_name: str, file_name: str, file_content: str, metadata: dict, tagging: dict = None):
+    s3_client.put_object(Bucket=bucket_name, Key=file_name, Body=file_content, Metadata=metadata)
+    # put_object_tagging is used to add tags to an existing object in the S3 bucket.
+    # Tags are key-value pairs that can be used to categorize and manage S3 objects.
+    if tagging:
+        s3_client.put_object_tagging(Bucket=bucket_name, Key=file_name, Tagging={'TagSet': [{'Key': k, 'Value': v} for k, v in tagging.items()]})
+    print(f"File '{file_name}' with metadata uploaded successfully to bucket '{bucket_name}'.")
+
 # connecting with localstack
 s3 = boto3.client(
     "s3", 
@@ -110,8 +123,23 @@ created_versioned_bucket(s3)
 # when we upload a new version of the file, it creates a new version with a unique version ID.
 # with version id we can get that specific version of the file, and we can also check if 
 # it's the latest version or not.
-response = s3.list_object_versions(Bucket=VERSIONED_BUCKET_NAME)
+# response = s3.list_object_versions(Bucket=VERSIONED_BUCKET_NAME)
 # upload_multiple_versions(s3, VERSIONED_BUCKET_NAME, "versioned-file.txt", ["Version 1 content", "Version 2 content", "Version 3 content"])
-for v in response.get("Versions", []):   
-    print(v)                     
-    print(f"VersionId: {v['VersionId']} | Latest: {v['IsLatest']}") 
+# for v in response.get("Versions", []):   
+#     print(v)                     
+#     print(f"VersionId: {v['VersionId']} | Latest: {v['IsLatest']}") 
+
+
+# File upload with metadata
+file_upload_with_metadata(s3, BUCKET_NAME, "file-with-metadata.txt", "This file has metadata.", 
+                          {"Author": "John Doe", "Description": "Sample file with metadata"}, Tagging={"Project": "S3Demo", "Environment": "Local"})
+
+# we can read the metadata of the file using head_object method, which returns the metadata in the response.
+# response = s3.head_object(Bucket=BUCKET_NAME, Key="file-with-metadata.txt")
+# print("Metadata:", response['Metadata'])
+# we can also read the tags of the file using get_object_tagging method, 
+# which returns the tags in the response.
+# response = s3.get_object_tagging(Bucket=BUCKET_NAME, Key="file-with-metadata.txt")
+# print("Tags:", response['TagSet'])
+
+
